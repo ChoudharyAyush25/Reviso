@@ -2,11 +2,20 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { GoogleGenAI } from '@google/genai';
 
-// Load environment variables from .env file
-dotenv.config();
+// Resolve directory path for robust ES module .env resolution
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Robust multi-path .env resolution
+const projectRoot = path.resolve(__dirname);
+dotenv.config({ path: path.resolve(projectRoot, '.env') });
+dotenv.config({ path: path.resolve(projectRoot, '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const require = createRequire(import.meta.url);
 const { PDFParse } = require('pdf-parse');
@@ -24,9 +33,12 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }
 });
 
-// Health check route
+// Health check route - safely checks API key existence without leaking secret
 app.get('/api/health', (req, res) => {
-  const hasApiKey = Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+  const rawGeminiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
+  const rawGoogleKey = process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY.trim() : '';
+  const hasApiKey = rawGeminiKey.length > 0 || rawGoogleKey.length > 0;
+
   res.json({ 
     status: 'ok', 
     service: 'Reviso Backend',
@@ -73,10 +85,12 @@ app.post('/api/generate-revision-pack', upload.single('file'), async (req, res) 
     }
 
     // 3. Gemini API Key Verification
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim()) ||
+                   (process.env.GOOGLE_API_KEY && process.env.GOOGLE_API_KEY.trim());
+
     if (!apiKey) {
       return res.status(500).json({ 
-        error: "Gemini API key is not configured on the server. Please add GEMINI_API_KEY to your .env file." 
+        error: "Gemini API key is not configured on the server. Please add GEMINI_API_KEY=your_key to your .env file in the project root." 
       });
     }
 
@@ -149,7 +163,7 @@ Return ONLY valid JSON matching this schema:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: systemPrompt,
       config: {
         responseMimeType: 'application/json'

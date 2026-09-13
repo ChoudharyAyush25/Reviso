@@ -13,7 +13,7 @@ export default function App() {
   const [appState, setAppState] = useState('IDLE_UPLOAD');
   const [activeLecture, setActiveLecture] = useState(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  
+
   // Pending Upload State
   const [uploadedFile, setUploadedFile] = useState(null);
   const [courseNameInput, setCourseNameInput] = useState('');
@@ -59,24 +59,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      
+
       {/* Global Brand Header */}
-      <Header 
-        currentLecture={activeLecture} 
-        onReset={handleReset} 
+      <Header
+        currentLecture={activeLecture}
+        onReset={handleReset}
       />
 
       {/* Main View Router */}
       <main className="flex-1">
         {appState === 'IDLE_UPLOAD' && (
-          <UploadLanding 
+          <UploadLanding
             onUploadSubmit={handleUploadSubmit}
             onSelectSample={handleSelectSample}
           />
         )}
 
         {appState === 'ANALYZING' && (
-          <ProcessingState 
+          <ProcessingState
             file={uploadedFile}
             courseName={courseNameInput}
             sampleLecture={selectedSample}
@@ -87,7 +87,7 @@ export default function App() {
         )}
 
         {appState === 'REVISION_PACK' && activeLecture && (
-          <RevisionPackView 
+          <RevisionPackView
             lecture={activeLecture}
             onOpenExport={() => setIsExportOpen(true)}
           />
@@ -96,7 +96,7 @@ export default function App() {
 
       {/* Export / Share Modal */}
       {activeLecture && (
-        <ExportModal 
+        <ExportModal
           lecture={activeLecture}
           isOpen={isExportOpen}
           onClose={() => setIsExportOpen(false)}
