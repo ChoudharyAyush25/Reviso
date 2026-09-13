@@ -26,7 +26,7 @@ Students spend significant time turning lecture materials into study guides. Tra
 2. **Analysis**: Server extracts raw text and parses page/slide structure:
    - **PDF**: Processed using `pdf-parse` v2 on server-side in-memory buffer.
    - **DOCX**: Extracted using `mammoth` (with `officeparser` fallback) to parse raw formatted document text.
-   - **PPTX**: Extracted using `officeparser` to parse presentation slide contents and text frames.
+   - **PPTX**: Extracted directly from the presentation ZIP structure using `adm-zip` to parse slide XML files (`ppt/slides/slide*.xml`) and `<a:t>` text elements (with `officeparser` fallback).
 3. **AI Generation**: Gemini 3.6 Flash analyzes the normalized text under strict grounding constraints.
 4. **Study Experience**: Student views structured topic notes, key concept definitions, "Key Takeaway" callout boxes, and switches seamlessly to a 5-question active recall practice quiz.
 5. **Export**: Student exports the complete revision pack as Markdown (`.md`), copies plain text, or prints/saves as PDF.
@@ -65,7 +65,7 @@ Students spend significant time turning lecture materials into study guides. Tra
 ## 🛠️ Technology Stack
 
 - **Frontend**: React 19, Vite, Tailwind CSS (CDN/Custom System), Lucide Icons, Canvas Confetti.
-- **Backend**: Node.js, Express, Multer, `pdf-parse` v2, `mammoth`, `officeparser`.
+- **Backend**: Node.js, Express, Multer, `pdf-parse` v2, `mammoth`, `adm-zip`, `officeparser`.
 - **AI Engine**: Google Gen AI SDK (`@google/genai`), Model: `gemini-3.6-flash`.
 
 ---
@@ -121,6 +121,6 @@ The output will be generated in the `dist/` folder.
 
 ## 📌 Assumptions & Limitations
 
-1. **Extractable Text**: Reviso processes digital PDF, DOCX, and PPTX files containing extractable text layers. Image-only scanned files without OCR text will prompt an error asking for a text-based document.
+1. **Extractable Text**: Reviso processes digital PDF, DOCX, and PPTX files containing extractable text layers. Image-only scanned documents without an extractable text layer will prompt an error asking for a text-based document.
 2. **Grounding Scope**: AI generation is strictly bound to the uploaded document text (45,000 characters input limit per request) to prevent hallucinated concepts.
 3. **Single-Purpose Focus**: Reviso intentionally omits calendars, generic chat, flashcards, and task managers to preserve single-flow revision focus.

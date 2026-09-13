@@ -164,7 +164,7 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
                   <span>•</span>
                   <span>Max 50MB per file</span>
                   <span>•</span>
-                  <span>Hand-written OCR ready</span>
+                  <span>Text-based documents supported</span>
                 </div>
               </div>
             ) : (
@@ -209,7 +209,7 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Lock className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Your uploaded course materials are encrypted and never shared.</span>
+              <span>Your uploaded course materials are processed server-side and are not stored.</span>
             </div>
 
             <button
