@@ -13,44 +13,37 @@ export default function App() {
   const [appState, setAppState] = useState('IDLE_UPLOAD');
   const [activeLecture, setActiveLecture] = useState(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [pendingMeta, setPendingMeta] = useState(null);
+  
+  // Pending Upload State
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [courseNameInput, setCourseNameInput] = useState('');
+  const [selectedSample, setSelectedSample] = useState(null);
 
   // User uploaded custom PDF
-  const handleUploadSubmit = ({ file, courseName, title }) => {
-    setPendingMeta({
-      title: title || file.name.replace(/\.[^/.]+$/, ""),
-      course: courseName,
-      fileName: file.name,
-      fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-    });
+  const handleUploadSubmit = ({ file, courseName }) => {
+    setUploadedFile(file);
+    setCourseNameInput(courseName);
+    setSelectedSample(null);
     setAppState('ANALYZING');
   };
 
   // User picked a pre-loaded sample lecture deck
   const handleSelectSample = (sample) => {
-    setActiveLecture(sample);
-    setPendingMeta({
-      title: sample.title,
-      course: sample.course,
-      fileName: sample.fileName,
-      fileSize: sample.fileSize
-    });
+    setSelectedSample(sample);
+    setUploadedFile(null);
+    setCourseNameInput('');
     setAppState('ANALYZING');
   };
 
-  // Processing sequence finished
-  const handleProcessingComplete = () => {
-    if (!activeLecture) {
-      // Default to sample 0 (Neurobiology) with custom titles if user uploaded custom PDF
-      const baseSample = SAMPLE_LECTURES[0];
-      setActiveLecture({
-        ...baseSample,
-        title: pendingMeta?.title || baseSample.title,
-        course: pendingMeta?.course || baseSample.course,
-        fileName: pendingMeta?.fileName || baseSample.fileName,
-        fileSize: pendingMeta?.fileSize || baseSample.fileSize
-      });
-    }
+  // Processing sequence finished (real API response or sample)
+  const handleProcessingSuccess = (packData) => {
+    setActiveLecture(packData);
+    setAppState('REVISION_PACK');
+  };
+
+  // Fallback trigger if backend fails
+  const handleFallbackDemo = () => {
+    setActiveLecture(SAMPLE_LECTURES[0]);
     setAppState('REVISION_PACK');
   };
 
@@ -58,7 +51,9 @@ export default function App() {
   const handleReset = () => {
     setAppState('IDLE_UPLOAD');
     setActiveLecture(null);
-    setPendingMeta(null);
+    setUploadedFile(null);
+    setSelectedSample(null);
+    setCourseNameInput('');
     setIsExportOpen(false);
   };
 
@@ -82,9 +77,12 @@ export default function App() {
 
         {appState === 'ANALYZING' && (
           <ProcessingState 
-            lectureTitle={pendingMeta?.title || 'Uploaded Lecture PDF'}
-            courseName={pendingMeta?.course || 'General Revision'}
-            onComplete={handleProcessingComplete}
+            file={uploadedFile}
+            courseName={courseNameInput}
+            sampleLecture={selectedSample}
+            onSuccess={handleProcessingSuccess}
+            onError={() => setAppState('IDLE_UPLOAD')}
+            onFallbackDemo={handleFallbackDemo}
           />
         )}
 
