@@ -12,12 +12,15 @@
   },
   "dependencies": {
     "@google/genai": "^2.22.0",
+    "adm-zip": "^0.6.1",
     "canvas-confetti": "^1.9.4",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "lucide-react": "^1.45.0",
+    "mammoth": "^1.12.3",
     "multer": "^2.3.0",
+    "officeparser": "^7.8.0",
     "pdf-parse": "^2.4.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

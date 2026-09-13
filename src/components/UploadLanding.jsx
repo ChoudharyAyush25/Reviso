@@ -8,8 +8,7 @@ import {
   BookOpen, 
   HelpCircle, 
   Zap, 
-  ArrowRight,
-  ShieldCheck
+  ArrowRight
 } from 'lucide-react';
 import { SAMPLE_LECTURES } from '../mockData/sampleLecturePacks';
 
@@ -20,18 +19,24 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef(null);
 
+  // Supported extensions
+  const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.pptx'];
+
   // File Selection Handler
   const handleFileChange = (selectedFile) => {
     setErrorMsg('');
     if (!selectedFile) return;
 
-    if (selectedFile.type !== 'application/pdf' && !selectedFile.name.endsWith('.pdf')) {
-      setErrorMsg('Please upload a valid PDF file (.pdf format only).');
+    const fileName = selectedFile.name.toLowerCase();
+    const isAllowed = ALLOWED_EXTENSIONS.some(ext => fileName.endsWith(ext));
+
+    if (!isAllowed) {
+      setErrorMsg('Unsupported file format. Please upload a PDF, DOCX, or PPTX file.');
       return;
     }
 
     if (selectedFile.size > 50 * 1024 * 1024) {
-      setErrorMsg('File size exceeds 50MB limit. Please upload a smaller PDF.');
+      setErrorMsg('File size exceeds 50MB limit. Please upload a smaller document.');
       return;
     }
 
@@ -66,6 +71,12 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
     });
   };
 
+  // Get file type badge text
+  const getFileTypeBadge = (filename) => {
+    const ext = filename.split('.').pop().toUpperCase();
+    return ext || 'DOC';
+  };
+
   return (
     <div className="w-full py-10 md:py-16 container-wide">
       
@@ -73,15 +84,15 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
       <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold mb-5 shadow-2xs">
           <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-          <span>Single-purpose AI revision tool for higher education</span>
+          <span>Single-purpose AI revision tool supporting PDF, DOCX & PPTX</span>
         </div>
         
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-display tracking-tight text-slate-900 leading-[1.15] mb-5">
-          Transform your lecture PDFs into clear revision notes & practice quizzes
+          Transform lecture PDFs, DOCX, or PPTX into clear revision notes & practice quizzes
         </h1>
         
         <p className="text-slate-600 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
-          Stop spending hours re-reading 80-slide decks. Upload your lecture slides or notes to instantly generate structured topic summaries and a 5-question self-assessment practice quiz.
+          Stop spending hours re-reading 80-slide decks or long word documents. Upload your lecture slides or notes to instantly generate structured topic summaries and a 5-question practice quiz.
         </p>
       </div>
 
@@ -116,7 +127,7 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
             onClick={() => fileInputRef.current?.click()}
             tabIndex={0}
             role="button"
-            aria-label="Upload lecture PDF dropzone"
+            aria-label="Upload lecture PDF, DOCX or PPTX dropzone"
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
             className={`relative rounded-2xl border-2 border-dashed p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 ${
               isDragging 
@@ -129,7 +140,7 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
             <input
               type="file"
               ref={fileInputRef}
-              accept=".pdf,application/pdf"
+              accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation"
               onChange={(e) => handleFileChange(e.target.files[0])}
               className="hidden"
             />
@@ -141,7 +152,7 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
                 </div>
                 
                 <h3 className="text-slate-900 font-extrabold text-xl mb-1.5 font-display">
-                  Drag and drop your lecture PDF here
+                  Drag and drop your PDF, DOCX or PPTX here
                 </h3>
                 
                 <p className="text-slate-500 text-sm mb-5">
@@ -149,23 +160,28 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
                 </p>
                 
                 <div className="inline-flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500 font-medium bg-white/80 px-4 py-2 rounded-full border border-slate-200/80">
-                  <span>PDF format</span>
+                  <span className="font-semibold text-indigo-700">PDF, DOCX or PPTX</span>
                   <span>•</span>
-                  <span>Max 50MB per deck</span>
+                  <span>Max 50MB per file</span>
                   <span>•</span>
                   <span>Hand-written OCR ready</span>
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 shadow-sm">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 shadow-sm font-bold text-sm">
                   <FileText className="w-7 h-7" />
                 </div>
-                <h3 className="text-slate-900 font-bold text-lg mb-1">
-                  {file.name}
-                </h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 rounded bg-indigo-600 text-white font-extrabold text-[10px]">
+                    {getFileTypeBadge(file.name)}
+                  </span>
+                  <h3 className="text-slate-900 font-bold text-lg">
+                    {file.name}
+                  </h3>
+                </div>
                 <p className="text-emerald-700 text-xs font-semibold mb-4 bg-emerald-100/80 px-3 py-1 rounded-full">
-                  ✓ Validated PDF ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                  ✓ Validated Document ({(file.size / (1024 * 1024)).toFixed(2)} MB)
                 </p>
                 <button
                   type="button"
@@ -193,7 +209,7 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Lock className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Your uploaded lecture materials are encrypted and never shared.</span>
+              <span>Your uploaded course materials are encrypted and never shared.</span>
             </div>
 
             <button
@@ -255,7 +271,7 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
                 1. Concise Revision Notes
               </h3>
               <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                Structured topic summaries, clear bullet points, and highlighted key takeaways derived directly from your lecture slides.
+                Structured topic summaries, clear bullet points, and highlighted key takeaways derived directly from your lecture documents.
               </p>
             </div>
             <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-bold text-indigo-600 flex items-center justify-between">
@@ -274,7 +290,7 @@ export default function UploadLanding({ onUploadSubmit, onSelectSample }) {
                 2. 5 Practice Questions
               </h3>
               <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                A focused 5-question practice quiz based ONLY on the uploaded lecture, with instant answer scoring and detailed slide explanations.
+                A focused 5-question practice quiz based ONLY on the uploaded lecture, with instant answer scoring and detailed explanations.
               </p>
             </div>
             <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-bold text-indigo-600 flex items-center justify-between">

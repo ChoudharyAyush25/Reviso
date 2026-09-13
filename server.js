@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { GoogleGenAI } from '@google/genai';
+import AdmZip from 'adm-zip';
 
 // Resolve directory path for robust ES module .env resolution
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +20,8 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const require = createRequire(import.meta.url);
 const { PDFParse } = require('pdf-parse');
+const mammoth = require('mammoth');
+const { parseOffice } = require('officeparser');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -33,6 +36,58 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }
 });
 
+// Robust Direct PPTX Slide XML Text Extractor
+function extractTextFromPptxBuffer(buffer) {
+  try {
+    const zip = new AdmZip(buffer);
+    const entries = zip.getEntries().filter(e => {
+      const name = e.entryName.toLowerCase();
+      return name.startsWith('ppt/slides/slide') && name.endsWith('.xml') && !name.includes('_rels');
+    });
+
+    entries.sort((a, b) => {
+      const mA = a.entryName.match(/slide(\d+)\.xml/i);
+      const mB = b.entryName.match(/slide(\d+)\.xml/i);
+      return (mA ? parseInt(mA[1], 10) : 0) - (mB ? parseInt(mB[1], 10) : 0);
+    });
+
+    if (entries.length === 0) {
+      return { text: "", totalSlides: 0 };
+    }
+
+    const slideTexts = [];
+    entries.forEach((entry, idx) => {
+      const xml = entry.getData().toString('utf8');
+      const paragraphMatches = xml.match(/<a:p[^>]*>(.*?)<\/a:p>/gs) || [];
+      
+      const paragraphs = paragraphMatches.map(pXml => {
+        const textMatches = pXml.match(/<a:t[^>]*>(.*?)<\/a:t>/gs) || [];
+        return textMatches.map(t => {
+          return t.replace(/<[^>]+>/g, '')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&apos;/g, "'")
+            .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code));
+        }).join('');
+      }).filter(p => p.trim().length > 0);
+
+      if (paragraphs.length > 0) {
+        slideTexts.push(`--- Slide ${idx + 1} ---\n` + paragraphs.join('\n'));
+      }
+    });
+
+    return {
+      text: slideTexts.join('\n\n'),
+      totalSlides: entries.length
+    };
+  } catch (err) {
+    console.error("PPTX direct extraction error:", err.message);
+    throw err;
+  }
+}
+
 // Health check route - safely checks API key existence without leaking secret
 app.get('/api/health', (req, res) => {
   const rawGeminiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
@@ -42,45 +97,100 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     service: 'Reviso Backend',
-    geminiConfigured: hasApiKey
+    geminiConfigured: hasApiKey,
+    supportedFormats: ['PDF', 'DOCX', 'PPTX']
   });
 });
 
-// Core AI Revision Pack Generation Endpoint
+// Core AI Revision Pack Generation Endpoint (Supports PDF, DOCX, PPTX)
 app.post('/api/generate-revision-pack', upload.single('file'), async (req, res) => {
   try {
     // 1. File Validation
     if (!req.file) {
       return res.status(400).json({ 
-        error: "No PDF file was received. Please select a valid lecture PDF file." 
+        error: "No file was received. Please upload a PDF, DOCX, or PPTX lecture file." 
       });
     }
 
-    const isPdf = req.file.mimetype.includes('pdf') || req.file.originalname.toLowerCase().endsWith('.pdf');
-    if (!isPdf) {
+    const filename = req.file.originalname.toLowerCase();
+    const mimetype = req.file.mimetype.toLowerCase();
+
+    const isPdf = mimetype.includes('pdf') || filename.endsWith('.pdf');
+    const isDocx = mimetype.includes('wordprocessingml') || mimetype.includes('msword') || filename.endsWith('.docx');
+    const isPptx = mimetype.includes('presentationml') || mimetype.includes('powerpoint') || filename.endsWith('.pptx');
+
+    if (!isPdf && !isDocx && !isPptx) {
       return res.status(400).json({ 
-        error: "Invalid file format. Reviso only accepts .pdf documents." 
+        error: "Unsupported file format. Reviso supports PDF, DOCX, and PPTX documents." 
       });
     }
 
-    // 2. Server-Side PDF Text Extraction
+    // 2. Server-Side Text Extraction by Format
     let extractedText = "";
     let totalPages = 1;
-    try {
-      const parser = new PDFParse({ data: req.file.buffer });
-      const parsedData = await parser.getText();
-      extractedText = parsedData.text ? parsedData.text.trim() : "";
-      totalPages = parsedData.total || (parsedData.pages ? parsedData.pages.length : 1);
-    } catch (pdfErr) {
-      console.error("PDF Parsing Error:", pdfErr.message);
-      return res.status(400).json({ 
-        error: "Unable to parse text from the uploaded PDF. Ensure the file is not password-protected or corrupted." 
-      });
+    let fileTypeLabel = "PDF";
+
+    if (isPdf) {
+      fileTypeLabel = "PDF";
+      try {
+        const parser = new PDFParse({ data: req.file.buffer });
+        const parsedData = await parser.getText();
+        extractedText = parsedData.text ? parsedData.text.trim() : "";
+        totalPages = parsedData.total || (parsedData.pages ? parsedData.pages.length : 1);
+      } catch (pdfErr) {
+        console.error("PDF Parsing Error:", pdfErr.message);
+        return res.status(400).json({ 
+          error: "Unable to parse text from the uploaded PDF. Ensure the file is not password-protected or corrupted." 
+        });
+      }
+    } else if (isDocx) {
+      fileTypeLabel = "DOCX";
+      try {
+        const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+        extractedText = result.value ? result.value.trim() : "";
+        const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
+        totalPages = Math.max(1, Math.ceil(wordCount / 500));
+      } catch (docxErr) {
+        try {
+          const parsedText = await parseOffice(req.file.buffer);
+          extractedText = typeof parsedText === 'string' ? parsedText.trim() : "";
+          const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
+          totalPages = Math.max(1, Math.ceil(wordCount / 500));
+        } catch (fallbackErr) {
+          console.error("DOCX Parsing Error:", fallbackErr.message);
+          return res.status(400).json({ 
+            error: "Unable to parse text from the uploaded DOCX document. Ensure the file is not corrupted." 
+          });
+        }
+      }
+    } else if (isPptx) {
+      fileTypeLabel = "PPTX";
+      try {
+        const pptxResult = extractTextFromPptxBuffer(req.file.buffer);
+        extractedText = pptxResult.text ? pptxResult.text.trim() : "";
+        totalPages = pptxResult.totalSlides || 1;
+      } catch (pptxErr) {
+        // Fallback to officeparser if zip extraction fails
+        try {
+          const parsedText = await parseOffice(req.file.buffer);
+          extractedText = typeof parsedText === 'string' ? parsedText.trim() : "";
+          const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
+          totalPages = Math.max(1, Math.ceil(wordCount / 150));
+        } catch (fallbackErr) {
+          console.error("PPTX Parsing Error:", fallbackErr.message);
+          return res.status(400).json({ 
+            error: "Unable to parse text from the uploaded PPTX presentation. Ensure the file is not corrupted." 
+          });
+        }
+      }
     }
+
+    // Normalize text whitespace
+    extractedText = extractedText.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 
     if (!extractedText || extractedText.length < 30) {
       return res.status(400).json({ 
-        error: "The uploaded PDF contains little to no extractable text. Please ensure your PDF is not a scanned image without OCR text." 
+        error: `The uploaded ${fileTypeLabel} document contains little to no extractable text. Please ensure your document contains readable lecture text.` 
       });
     }
 
@@ -118,9 +228,9 @@ CRITICAL CONSTRAINTS & GROUNDING RULES:
    - Include "conceptTag": Concept or slide topic label.
    - Include "bloomLevel": "Comprehension", "Analysis", "Application", or "Knowledge".
 
-LECTURE FILE NAME: ${fileName}
+LECTURE FILE NAME: ${fileName} (${fileTypeLabel} format)
 PROVIDED COURSE TITLE: ${courseContext}
-LECTURE TEXT (PARSED ${totalPages} PAGES):
+LECTURE TEXT (PARSED ${totalPages} ${fileTypeLabel === 'PPTX' ? 'SLIDES' : 'PAGES'}):
 ---
 ${extractedText.substring(0, 45000)}
 ---
@@ -201,6 +311,7 @@ Return ONLY valid JSON matching this schema:
     packData.fileName = fileName;
     packData.fileSize = `${(req.file.size / (1024 * 1024)).toFixed(1)} MB`;
     packData.pagesParsed = totalPages;
+    packData.fileType = fileTypeLabel;
     if (!packData.course) packData.course = courseContext;
     if (!packData.title) packData.title = fileName.replace(/\.[^/.]+$/, "");
 

@@ -1,30 +1,33 @@
 # Reviso — AI Lecture Revision Pack Generator
 
-**Reviso** is a single-purpose, premium AI student productivity application designed to eliminate the manual busywork of converting dense lecture PDFs into concise, actionable study materials.
+**Reviso** is a single-purpose, premium AI student productivity application designed to eliminate the manual busywork of converting dense lecture documents into concise, actionable study materials.
 
-Instead of spending hours re-reading 80-slide decks, students upload a lecture PDF to instantly receive a structured **Revision Pack** containing scannable topic notes and a **5-question practice quiz** derived strictly from their lecture material.
+Instead of spending hours re-reading 80-slide decks or long word documents, students upload a **PDF, DOCX, or PPTX** lecture document to instantly receive a structured **Revision Pack** containing scannable topic notes and a **5-question practice quiz** derived strictly from their lecture material.
 
 ---
 
 ## 🎯 Target Persona & Problem Statement
 
 ### Persona
-Higher education students (Undergraduate, Medical, STEM, Humanities) who attend lectures with heavy slide decks and reading materials.
+Higher education students (Undergraduate, Medical, STEM, Humanities) who attend lectures with heavy slide decks, reading assignments, and word documents.
 
 ### Problem
-Students spend significant time turning lecture PDFs into study materials. Traditional productivity tools add cognitive overhead (complex dashboards, flashcard decks, generic AI chatbots, task managers). Reviso solves this single problem with extreme focus.
+Students spend significant time turning lecture materials into study guides. Traditional productivity tools add cognitive overhead (complex dashboards, flashcard decks, generic AI chatbots, task managers). Reviso solves this single problem with extreme focus.
 
 ---
 
 ## 🔄 Core Workflow
 
 ```
-[1. Upload Lecture PDF] ➔ [2. Server Text Extraction] ➔ [3. Gemini 3.6 Flash] ➔ [4. Revision Notes & 5-Q Quiz] ➔ [5. Export / Study]
+[1. Upload PDF / DOCX / PPTX] ➔ [2. Server Text Extraction] ➔ [3. Gemini 3.6 Flash] ➔ [4. Revision Notes & 5-Q Quiz] ➔ [5. Export / Study]
 ```
 
-1. **Upload**: Student drags & drops a lecture PDF (up to 50MB) and optionally enters a course title (e.g. *BIO 201: Cellular Neurobiology*).
-2. **Analysis**: Server extracts raw text and parses page structure using `pdf-parse`.
-3. **AI Generation**: Gemini 3.6 Flash analyzes the text under strict grounding constraints.
+1. **Upload**: Student drags & drops a lecture document (**PDF, DOCX, or PPTX** up to 50MB) and optionally enters a course title (e.g. *BIO 201: Cellular Neurobiology*).
+2. **Analysis**: Server extracts raw text and parses page/slide structure:
+   - **PDF**: Processed using `pdf-parse` v2 on server-side in-memory buffer.
+   - **DOCX**: Extracted using `mammoth` (with `officeparser` fallback) to parse raw formatted document text.
+   - **PPTX**: Extracted using `officeparser` to parse presentation slide contents and text frames.
+3. **AI Generation**: Gemini 3.6 Flash analyzes the normalized text under strict grounding constraints.
 4. **Study Experience**: Student views structured topic notes, key concept definitions, "Key Takeaway" callout boxes, and switches seamlessly to a 5-question active recall practice quiz.
 5. **Export**: Student exports the complete revision pack as Markdown (`.md`), copies plain text, or prints/saves as PDF.
 
@@ -32,6 +35,7 @@ Students spend significant time turning lecture PDFs into study materials. Tradi
 
 ## 🚀 Key Features
 
+- 📁 **Multi-Format Support**: Upload PDF, DOCX (Word), or PPTX (PowerPoint) lecture files up to 50MB.
 - 📝 **Concise Topic Revision Notes**: Hierarchical bullet points, executive summaries, and exam-relevant key takeaways.
 - 🎯 **5-Question Practice Quiz**: Targeted multiple-choice questions with 4 accessible options, instant answer verification (✓ / ✗), and detailed slide explanations.
 - 🔑 **Key Concept Definitions & Tables**: Terminology popovers and side-by-side formula comparison tables.
@@ -44,7 +48,7 @@ Students spend significant time turning lecture PDFs into study materials. Tradi
 
 - **Server-Side API Key Protection**: The `GEMINI_API_KEY` is loaded strictly on the Express backend via `process.env`. It is **NEVER** exposed to the React client bundle or browser console.
 - **Git Protection**: `.env`, `.env.*`, `node_modules/`, `dist/`, and temporary upload paths are explicitly ignored in `.gitignore`.
-- **In-Memory File Buffer**: Uploaded PDF files are processed in-memory using `multer.memoryStorage()`; no lecture files are persisted to disk.
+- **In-Memory File Buffer**: Uploaded lecture files (PDF/DOCX/PPTX) are processed in-memory using `multer.memoryStorage()`; no lecture files are persisted to disk.
 - **No Unsanitized HTML Rendering**: AI outputs are parsed as safe structured JSON arrays and rendered cleanly via standard React components.
 
 ---
@@ -61,7 +65,7 @@ Students spend significant time turning lecture PDFs into study materials. Tradi
 ## 🛠️ Technology Stack
 
 - **Frontend**: React 19, Vite, Tailwind CSS (CDN/Custom System), Lucide Icons, Canvas Confetti.
-- **Backend**: Node.js, Express, Multer, `pdf-parse` v2.
+- **Backend**: Node.js, Express, Multer, `pdf-parse` v2, `mammoth`, `officeparser`.
 - **AI Engine**: Google Gen AI SDK (`@google/genai`), Model: `gemini-3.6-flash`.
 
 ---
@@ -117,6 +121,6 @@ The output will be generated in the `dist/` folder.
 
 ## 📌 Assumptions & Limitations
 
-1. **PDF Text Format**: Reviso processes digital lecture PDFs with extractable text layers. Scanned image-only PDFs without OCR text will prompt an error asking for a text-based PDF.
+1. **Extractable Text**: Reviso processes digital PDF, DOCX, and PPTX files containing extractable text layers. Image-only scanned files without OCR text will prompt an error asking for a text-based document.
 2. **Grounding Scope**: AI generation is strictly bound to the uploaded document text (45,000 characters input limit per request) to prevent hallucinated concepts.
 3. **Single-Purpose Focus**: Reviso intentionally omits calendars, generic chat, flashcards, and task managers to preserve single-flow revision focus.
