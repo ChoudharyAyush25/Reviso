@@ -56,9 +56,18 @@ export default function ProcessingState({ file, courseName, sampleLecture, onSuc
         body: formData
       })
       .then(async (res) => {
-        const data = await res.json();
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          if (!res.ok) {
+            throw new Error(text || `Server error (${res.status})`);
+          }
+          throw new Error("Invalid response format received from server.");
+        }
         if (!res.ok) {
-          throw new Error(data.error || `Server responded with status ${res.status}`);
+          throw new Error(data.error || `Server error (${res.status})`);
         }
         return data;
       })
