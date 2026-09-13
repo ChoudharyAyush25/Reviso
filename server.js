@@ -89,7 +89,7 @@ function extractTextFromPptxBuffer(buffer) {
 }
 
 // Health check route - safely checks API key existence without leaking secret
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   const rawGeminiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
   const rawGoogleKey = process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY.trim() : '';
   const hasApiKey = rawGeminiKey.length > 0 || rawGoogleKey.length > 0;
@@ -103,7 +103,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Core AI Revision Pack Generation Endpoint (Supports PDF, DOCX, PPTX)
-app.post('/api/generate-revision-pack', upload.single('file'), async (req, res) => {
+app.post(['/api/generate-revision-pack', '/generate-revision-pack'], upload.single('file'), async (req, res) => {
   try {
     // 1. File Validation
     if (!req.file) {
@@ -338,6 +338,10 @@ app.use((err, req, res, next) => {
   next();
 });
 
-app.listen(PORT, () => {
-  console.log(`Reviso API Server running on http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Reviso API Server running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
