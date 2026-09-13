@@ -26,6 +26,12 @@ const { parseOffice } = require('officeparser');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+export function startServer(port = PORT) {
+  return app.listen(port, () => {
+    console.log(`Reviso API Server running on http://localhost:${port}`);
+  });
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -339,10 +345,9 @@ app.use((err, req, res, next) => {
   next();
 });
 
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`Reviso API Server running on http://localhost:${PORT}`);
-  });
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  startServer(PORT);
 }
 
+export { extractTextFromPptxBuffer };
 export default app;
