@@ -111,7 +111,7 @@ export default function App() {
             <span>• Single-purpose AI Lecture Revision Generator</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-emerald-700 font-medium">🔒 FERPA & GDPR Compliant</span>
+            <span className="text-emerald-700 font-medium">🔒 Secure Server-Side Processing</span>
             <span>Privacy Policy</span>
             <span>Terms of Study</span>
           </div>

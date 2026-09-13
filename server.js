@@ -179,7 +179,25 @@ Return ONLY valid JSON matching this schema:
       packData = JSON.parse(cleaned);
     }
 
-    // Attach metadata
+    // Validation & Schema Normalization
+    if (!packData || typeof packData !== 'object') {
+      throw new Error("Invalid response format received from AI model.");
+    }
+
+    if (!Array.isArray(packData.notes) || packData.notes.length === 0) {
+      throw new Error("AI failed to generate revision notes sections.");
+    }
+
+    if (!Array.isArray(packData.quiz) || packData.quiz.length === 0) {
+      throw new Error("AI failed to generate practice quiz questions.");
+    }
+
+    // Ensure quiz has exactly 5 questions
+    if (packData.quiz.length > 5) {
+      packData.quiz = packData.quiz.slice(0, 5);
+    }
+
+    // Attach metadata safely
     packData.fileName = fileName;
     packData.fileSize = `${(req.file.size / (1024 * 1024)).toFixed(1)} MB`;
     packData.pagesParsed = totalPages;
@@ -189,7 +207,7 @@ Return ONLY valid JSON matching this schema:
     return res.json(packData);
 
   } catch (error) {
-    console.error("Server API Error:", error);
+    console.error("Server API Error:", error.message);
     return res.status(500).json({ 
       error: error.message || "An unexpected error occurred while generating the revision pack." 
     });
@@ -200,7 +218,7 @@ Return ONLY valid JSON matching this schema:
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({ 
-      error: "File size exceeds maximum limit of 50MB." 
+      error: "File size exceeds maximum allowed limit of 50MB." 
     });
   }
   if (err) {

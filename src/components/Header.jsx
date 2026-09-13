@@ -29,7 +29,7 @@ export default function Header({ currentLecture, onReset }) {
           {/* Privacy Security Chip */}
           <div className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-medium border border-emerald-200/80 shadow-2xs">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>FERPA & GDPR Compliant • 256-Bit Encrypted</span>
+            <span>Secure server-side processing</span>
           </div>
 
           {/* Upload New Action Button */}
